@@ -1,0 +1,6 @@
+# notifications for me and Chloe
+family:
+  name: Family
+  entities:
+    - device_tracker.neils_iphone_15_pro
+    - device_tracker.iphone_de_chloe

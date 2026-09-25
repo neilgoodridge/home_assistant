@@ -1,0 +1,1163 @@
+- id: '1734652270141'
+  alias: Subwoofer control
+  description: Turn off subwoofer daily at 22:30, turn back on when the Apple TV next
+    turns on, but not before 08:00 the next morning.
+  triggers:
+  - trigger: time
+    at: '22:30'
+    id: time_off
+  - trigger: state
+    entity_id: media_player.living_room_apple_tv
+    to: 'on'
+    id: apple_tv_on
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: time_off
+      sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.subwoofer
+    - conditions:
+      - condition: trigger
+        id: apple_tv_on
+      - condition: time
+        after: 08:00:00
+        before: '22:30:00'
+      sequence:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.subwoofer
+  mode: single
+- id: d8c57ffd5bba4dedad37a8395fe8b900
+  alias: Turn off lights when no one is home
+  description: Turn off all lights and remote when both people are away for 1 minute
+  triggers:
+  - trigger: state
+    entity_id: group.family
+    to: not_home
+    for:
+      minutes: 1
+  conditions:
+  - condition: state
+    entity_id: device_tracker.neils_iphone_15_pro
+    state: not_home
+  - condition: state
+    entity_id: device_tracker.iphone_de_chloe
+    state: not_home
+  actions:
+  - action: script.turn_off_all_lights
+  - action: remote.turn_off
+    target:
+      device_id: bd687bdf230593e0c9d1c6f1e77fc8bb
+  mode: single
+- id: 02effbd3c56e4e11a691e7f94e1b0c59
+  alias: Sync guest room sofa with lamp on
+  description: Turn on sofa light when guest room lamp turns on
+  triggers:
+  - trigger: state
+    entity_id: light.guest_room_lamp
+    to: 'on'
+  actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.guest_room_sofa
+  mode: single
+- id: c09748be25fc4a21a1e31600c8d8fd19
+  alias: Sync guest room sofa with lamp off
+  description: Turn off sofa light when guest room lamp turns off
+  triggers:
+  - trigger: state
+    entity_id: light.guest_room_lamp
+    to: 'off'
+  actions:
+  - action: light.turn_off
+    target:
+      entity_id: light.guest_room_sofa
+  mode: single
+- id: heating_boost_timer
+  alias: Heating Timer
+  triggers:
+  - trigger: state
+    entity_id: input_boolean.heating_boost_active
+    to: 'on'
+  actions:
+  - wait_template: '{{ states("input_boolean.heating_boost_active") == "off" or states("input_number.heating_boost_minutes")
+      | int(0) <= 0 }}'
+    timeout: 01:00:00
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.heating_boost_active
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.heating_boost_minutes
+    data:
+      value: 0
+  mode: restart
+- id: heating_boost
+  alias: Heating Boost
+  description: Manual heating boost via slider — activate, cancel, and per-minute
+    countdown
+  triggers:
+  - trigger: numeric_state
+    entity_id: input_number.heating_boost_minutes
+    above: 0
+    id: activated
+  - trigger: numeric_state
+    entity_id: input_number.heating_boost_minutes
+    below: 1
+    id: cancelled
+  - trigger: time_pattern
+    minutes: /1
+    id: tick
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: activated
+      sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.heating_boost_active
+      - action: button.press
+        target:
+          entity_id: button.wiser_boost_all_heating
+    - conditions:
+      - condition: trigger
+        id: cancelled
+      - condition: state
+        entity_id: input_boolean.heating_boost_active
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.heating_boost_active
+      - action: button.press
+        target:
+          entity_id: button.wiser_cancel_all_heating_overrides
+    - conditions:
+      - condition: trigger
+        id: tick
+      - condition: state
+        entity_id: input_boolean.heating_boost_active
+        state: 'on'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: numeric_state
+            entity_id: input_number.heating_boost_minutes
+            below: 1
+          sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.heating_boost_active
+          - action: button.press
+            target:
+              entity_id: button.wiser_cancel_all_heating_overrides
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.heating_boost_minutes
+            data:
+              value: 0
+        default:
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.heating_boost_minutes
+          data:
+            value: '{{ states(''input_number.heating_boost_minutes'') | int - 1 }}'
+  mode: restart
+- id: heating_off_when_timer_zero
+  alias: Heating Off When Timer Zero
+  description: Force climate.heating off whenever the boost timer reaches zero, independent
+    of the busy heating_boost automation so rapid slider drags can't interrupt it
+  triggers:
+  - trigger: numeric_state
+    entity_id: input_number.heating_boost_minutes
+    below: 1
+  actions:
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: climate.heating
+    data:
+      hvac_mode: 'off'
+  mode: single
+- id: dehumidifier_boost
+  alias: Dehumidifier Boost
+  description: Manual dehumidifier boost via slider — activate, cancel, and per-minute
+    countdown
+  triggers:
+  - trigger: numeric_state
+    entity_id: input_number.dehumidifier_boost_minutes
+    above: 0
+    id: activated
+  - trigger: numeric_state
+    entity_id: input_number.dehumidifier_boost_minutes
+    below: 1
+    id: cancelled
+  - trigger: time_pattern
+    minutes: /1
+    id: tick
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: activated
+      sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dehumidifier_boost_active
+      - action: humidifier.turn_on
+        target:
+          entity_id: humidifier.dehumidifier
+      - action: select.select_option
+        target:
+          entity_id: select.dehumidifier_countdown
+        data:
+          option: cancel
+    - conditions:
+      - condition: trigger
+        id: cancelled
+      - condition: state
+        entity_id: input_boolean.dehumidifier_boost_active
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dehumidifier_boost_active
+      - action: humidifier.turn_off
+        target:
+          entity_id: humidifier.dehumidifier
+      - action: select.select_option
+        target:
+          entity_id: select.dehumidifier_countdown
+        data:
+          option: cancel
+    - conditions:
+      - condition: trigger
+        id: tick
+      - condition: numeric_state
+        entity_id: input_number.dehumidifier_boost_minutes
+        above: 0
+      sequence:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.dehumidifier_boost_minutes
+        data:
+          value: '{{ (states(''input_number.dehumidifier_boost_minutes'') | int(0))
+            - 1 }}'
+  mode: restart
+- id: bathroom_extractor_boost
+  alias: Bathroom Extractor Boost
+  description: Manual boost via slider, or automatic start after the bathroom light
+    has been on 3.5 minutes; single per-minute countdown gated on the light being
+    off (unifies the old extractor_boost_* and bathroom_extractor_* automations, which
+    independently decremented the same timer)
+  triggers:
+  - trigger: numeric_state
+    entity_id: input_number.bathroom_extractor_minutes_remaining
+    above: 0
+    id: activated
+  - trigger: numeric_state
+    entity_id: input_number.bathroom_extractor_minutes_remaining
+    below: 1
+    id: cancelled
+  - trigger: time_pattern
+    minutes: /1
+    id: tick
+  - trigger: state
+    entity_id: light.bathroom_light
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 30
+    id: light_on_auto_start
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: activated
+      sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.extractor_boost_active
+      - action: switch.turn_on
+        target:
+          entity_id: switch.extractor_fan
+    - conditions:
+      - condition: trigger
+        id: cancelled
+      - condition: state
+        entity_id: input_boolean.extractor_boost_active
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.extractor_boost_active
+      - action: switch.turn_off
+        target:
+          entity_id: switch.extractor_fan
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.bathroom_extractor_minutes_remaining
+        data:
+          value: 0
+    - conditions:
+      - condition: trigger
+        id: tick
+      - condition: state
+        entity_id: input_boolean.extractor_boost_active
+        state: 'on'
+      - condition: state
+        entity_id: light.bathroom_light
+        state: 'off'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: numeric_state
+            entity_id: input_number.bathroom_extractor_minutes_remaining
+            below: 1
+          sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.extractor_boost_active
+          - action: switch.turn_off
+            target:
+              entity_id: switch.extractor_fan
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.bathroom_extractor_minutes_remaining
+            data:
+              value: 0
+        default:
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.bathroom_extractor_minutes_remaining
+          data:
+            value: '{{ states(''input_number.bathroom_extractor_minutes_remaining'')
+              | int - 1 }}'
+    - conditions:
+      - condition: trigger
+        id: light_on_auto_start
+      sequence:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.extractor_fan
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.bathroom_extractor_minutes_remaining
+        data:
+          value: 10
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.extractor_boost_active
+  mode: restart
+- id: fa4ac719b6a34d83a139f4f03ff39377
+  alias: Notify when device becomes unavailable
+  description: Send notification when sensors go offline
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.bathroom_sensor_temperature
+    - sensor.bathroom_sensor_humidity
+    - sensor.en_suite_sensor_temperature
+    - sensor.en_suite_sensor_humidity
+    - sensor.hallway_sensor_temperature
+    - sensor.hallway_sensor_humidity
+    - sensor.living_room_sensor_temperature
+    - sensor.living_room_sensor_humidity
+    - sensor.bedroom_sensor_temperature
+    - sensor.bedroom_sensor_humidity
+    - sensor.kitchen_sensor_temperature
+    - sensor.kitchen_sensor_humidity
+    - sensor.guest_room_sensor_temperature
+    - sensor.guest_room_sensor_humidity
+    to: unavailable
+  actions:
+  - action: notify.mobile_app_neils_iphone
+    data:
+      title: Device Unavailable
+      message: '{{ state_attr(trigger.entity_id, ''friendly_name'') or trigger.entity_id
+        }} has become unavailable.'
+  mode: single
+- id: doorbell_notification
+  alias: Door Bell - Notify
+  description: Send mobile notification to Neil and Chloé when door bell is pressed
+  triggers:
+  - trigger: mqtt
+    topic: zigbee2mqtt/Door release/action
+  actions:
+  - target:
+      entity_id: remote.rf_booster
+    data:
+      device: doorbell
+      command: ring
+    action: remote.send_command
+    enabled: true
+  - target:
+      entity_id: script.flash_lights
+    action: script.turn_on
+    data: {}
+  - data:
+      title: Ding Dong
+      message: Someone is at the door!
+      data:
+        actions:
+        - action: OPEN_DOOR
+          title: Click to Open
+    action: notify.family
+  mode: single
+- id: doorbell_notification_action_open
+  alias: Door Bell - Unlock From Notification
+  description: Run the unlock_front_door script when the notification action is pressed
+  triggers:
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: OPEN_DOOR
+  actions:
+  - service: script.turn_on
+    target:
+      entity_id: script.unlock_front_door
+  mode: single
+- id: scene_daytime_to_evening
+  alias: Scene - daytime to evening (15 min before sunset)
+  description: Activate evening scene 15 minutes before sunset
+  triggers:
+  - trigger: sun
+    event: sunset
+    offset: 00:15:00
+  conditions:
+  - condition: or
+    conditions:
+    - condition: zone
+      entity_id: person.neil_goodridge
+      zone: zone.home
+    - condition: zone
+      entity_id: person.chloe_remy
+      zone: zone.home
+  actions:
+  - action: scene.turn_on
+    target:
+      entity_id: scene.evening
+    data:
+      transition: 10
+  mode: single
+- id: bathroom_extractor_fan_timer
+  alias: Bathroom Extractor - timer
+  triggers:
+  - trigger: numeric_state
+    entity_id: input_number.bathroom_extractor_minutes_remaining
+    above: 0
+  actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.extractor_fan
+  - wait_template: '{{ states("input_number.bathroom_extractor_minutes_remaining")
+      | int(0) <= 0 }}'
+    timeout: 02:00:00
+  - action: switch.turn_off
+    target:
+      entity_id: switch.extractor_fan
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.bathroom_extractor_minutes_remaining
+    data:
+      value: 0
+  mode: restart
+- id: bathroom_wall_switch_z2m
+  alias: Bathroom - light
+  triggers:
+  - topic: zigbee2mqtt/Bathroom Light Switch/action
+    trigger: mqtt
+  actions:
+  - target:
+      entity_id: light.bathroom_lights
+    action: light.toggle
+    data: {}
+  mode: restart
+- id: bedroom_switch_toggle_z2m
+  alias: Bedroom - main light
+  triggers:
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Bedroom Light Switch
+      value_template: '{{ value_json.action }}'
+      payload: toggle_l1
+  actions:
+  - target:
+      entity_id: light.bedroom_fan_light
+    data:
+      transition: 0.5
+    action: light.toggle
+  mode: restart
+- id: bedroom_switch_right_z2m
+  alias: Bedroom - side lights
+  triggers:
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Bedroom Light Switch
+      value_template: '{{ value_json.action }}'
+      payload: toggle_l2
+  actions:
+  - service: light.toggle
+    target:
+      entity_id: light.bedroom_side_lights
+  mode: restart
+- id: en_suite_wall_switch_z2m
+  alias: En Suite - light
+  triggers:
+  - platform: mqtt
+    topic: zigbee2mqtt/En Suite Light Relay/action
+  actions:
+  - service: light.toggle
+    target:
+      entity_id: light.en_suite_light
+  mode: restart
+- id: guest_room_switch_toggle_z2m_lamp
+  alias: Guest Room - side lights
+  description: ''
+  triggers:
+  - topic: zigbee2mqtt/Guest Room Light Switch
+    value_template: '{{ value_json.action }}'
+    payload: toggle_l2
+    trigger: mqtt
+  actions:
+  - target:
+      entity_id: light.guest_room_lamp
+    data:
+      transition: 0.5
+    action: light.toggle
+  mode: restart
+- id: guest_room_switch_toggle_z2m_main
+  alias: Guest Room - main light
+  triggers:
+  - platform: mqtt
+    topic: zigbee2mqtt/Guest Room Light Switch
+    value_template: '{{ value_json.action }}'
+    payload: toggle_l1
+  actions:
+  - service: light.toggle
+    target:
+      entity_id: light.guest_room_main_light
+    data:
+      transition: 0.5
+  mode: restart
+- id: hallway_switch_onoff_z2m
+  alias: Hallway - lights
+  triggers:
+  - platform: mqtt
+    topic: zigbee2mqtt/Hallway Light Switch/action
+    payload: toggle
+  actions:
+  - service: light.toggle
+    target:
+      entity_id: light.hallway_lights
+    data:
+      transition: 0.5
+  mode: restart
+- id: kitchen_wall_switch_z2m
+  alias: Kitchen - lights
+  triggers:
+  - platform: mqtt
+    topic: zigbee2mqtt/Kitchen Light Switch/action
+  actions:
+  - service: light.toggle
+    target:
+      entity_id: light.kitchen_lights
+  mode: restart
+- id: living_room_switch_toggle_z2m
+  alias: Living Room - main lights
+  triggers:
+  - topic: zigbee2mqtt/Living Room Light Switch
+    value_template: '{{ value_json.action }}'
+    payload: toggle_l1
+    trigger: mqtt
+  actions:
+  - target:
+      entity_id: light.living_room_fan_light
+    data:
+      transition: 1
+    action: light.toggle
+  mode: restart
+- id: living_room_left_switch_toggle_z2m
+  alias: Living Room - side lights scene by time of day
+  triggers:
+  - trigger: mqtt
+    topic: zigbee2mqtt/Living Room Light Switch
+    value_template: '{{ value_json.action }}'
+    payload: toggle_l2
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: light.living_room_side_lights
+        state: 'on'
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: light.living_room_side_lights
+    - conditions:
+      - condition: template
+        value_template: "{{ now() >= (as_datetime(state_attr('sun.sun','next_setting'))
+          - timedelta(minutes=30))\n   or now() < as_datetime(state_attr('sun.sun','next_rising'))
+          }}\n"
+      sequence:
+      - action: scene.turn_on
+        target:
+          entity_id: scene.evening
+    default:
+    - action: scene.turn_on
+      target:
+        entity_id: scene.daytime
+  mode: restart
+- id: '1782783014227'
+  alias: Fridge Door Open/Closed Notifications
+  mode: single
+  triggers:
+  - id: door_open_2_mins
+    type: opened
+    device_id: c86dce23060b1a6e7ca7497b1c6cf73c
+    entity_id: 359fb4cbd8ba6f3ebe0ea75c5ccb2cc1
+    domain: binary_sensor
+    trigger: device
+    for:
+      minutes: 2
+  - id: door_closed
+    type: not_opened
+    device_id: c86dce23060b1a6e7ca7497b1c6cf73c
+    entity_id: 359fb4cbd8ba6f3ebe0ea75c5ccb2cc1
+    domain: binary_sensor
+    trigger: device
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: door_open_2_mins
+      sequence:
+      - action: notify.family
+        data:
+          message: Fridge door is open
+          title: Uh-Oh!
+      - action: script.flash_lights
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.fridge_door_alert_sent
+    - conditions:
+      - condition: trigger
+        id: door_closed
+      - condition: state
+        entity_id: input_boolean.fridge_door_alert_sent
+        state: 'on'
+      sequence:
+      - action: notify.family
+        data:
+          message: Fridge door is now closed
+          title: All Good!
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.fridge_door_alert_sent
+- id: tumble_dryer_finished_notification
+  alias: Tumble Dryer — Finished Notification
+  description: Notify when tumble dryer has been running (>50W for 20m) then drops
+    below 50W for 3m
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.tumble_dryer_power
+    above: 50
+    for: 00:10:00
+  conditions: []
+  actions:
+  - wait_for_trigger:
+    - trigger: numeric_state
+      entity_id: sensor.tumble_dryer_power
+      below: 3
+      for: 00:02:00
+  - action: notify.family
+    data:
+      title: Tumble Dryer finished
+  - choose:
+    - conditions:
+      - condition: time
+        after: 08:00:00
+        before: '23:30:00'
+      sequence:
+      - action: script.flash_lights
+  mode: single
+- id: washing_machine_finished_notification
+  alias: Washing Machine — Finished Notification
+  description: 'Notify when washing machine has been running (>50W for 5mins) then
+    drops below 50W for 3m
+
+    '
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.washing_machine_power
+    above: 50
+    for: 00:05:00
+  conditions: []
+  actions:
+  - wait_for_trigger:
+    - trigger: numeric_state
+      entity_id:
+      - sensor.washing_machine_power
+      below: 10
+      for:
+        hours: 0
+        minutes: 2
+        seconds: 0
+  - action: notify.family
+    data:
+      title: "\U0001F9FA"
+      message: Washing Machine finished
+  - choose:
+    - conditions:
+      - condition: time
+        after: 08:00:00
+        before: '23:30:00'
+      sequence:
+      - action: script.flash_lights
+  mode: single
+- id: '1783128047971'
+  alias: En Suite Lamp with Door
+  description: Toggle lamp when door opens (debounced 1 sec)
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.en_suite_door_sensor
+    to:
+    - 'on'
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.from_state is none or\n   (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed))
+      >= 1 }}"
+  actions:
+  - action: light.toggle
+    metadata: {}
+    target:
+      entity_id: light.en_suite_lamp
+    data:
+      transition: 0.5
+  mode: single
+- id: en_suite_lamp_door_long_open
+  alias: En Suite Lamp - Door left open (turn off on close)
+  description: If door stays open 10+ sec then closes, turn lamp off
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.en_suite_door_sensor
+    to: 'off'
+  conditions:
+  - condition: template
+    value_template: '{{ (now() - trigger.from_state.last_changed).total_seconds()
+      >= 10 }}'
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    target:
+      entity_id: light.en_suite_lamp
+    data:
+      transition: 0.5
+  mode: single
+- id: force_amp_off_before_ha_shutdown
+  alias: Force Amp off before HA shutdown
+  description: Prevents STR-DN1080 waking up when HA restarts/shuts down
+  triggers:
+  - platform: homeassistant
+    event: shutdown
+  conditions:
+  - condition: state
+    entity_id: media_player.sony_amp_clean
+    state: 'off'
+  actions:
+  - service: media_player.turn_off
+    target:
+      entity_id: media_player.sony_amp_clean
+  - delay:
+      seconds: 3
+  mode: single
+- id: '1784388665233'
+  alias: Chloé’s Drawer
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.chloes_drawer
+    to: 'on'
+  conditions:
+  - condition: state
+    entity_id: person.chloe
+    state: not_home
+  actions:
+  - action: notify.neil_only
+    data:
+      message: Opened
+      title: Chloé's Drawer
+  mode: single
+- id: medication_reminder_every_36_hours
+  alias: Medication Reminder Every 36 Hours
+  description: Send a medication reminder every 36 hours starting 2026-07-28 at 20:00
+  triggers:
+  - minutes: '0'
+    trigger: time_pattern
+  conditions:
+  - condition: template
+    value_template: '{% set start = as_timestamp(strptime(''2026-08-17 20:00:00'',
+      ''%Y-%m-%d %H:%M:%S'')) %} {% set current = as_timestamp(now().replace(minute=0,
+      second=0, microsecond=0)) %} {{ current >= start and ((current - start) | int(0))
+      % 129600 == 0 }}'
+  actions:
+  - action: notify.neil_only
+    data:
+      message: Time to take your medication
+      title: "\U0001F48A"
+  mode: single
+- id: '1784682859926'
+  alias: Bathroom extractor countdown start
+  description: Start countdown when light turns off and fan is active
+  triggers:
+  - trigger: state
+    entity_id: light.bathroom_light
+    to: 'off'
+  conditions:
+  - condition: state
+    entity_id: switch.extractor_fan
+    state: 'on'
+  actions:
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.extractor_boost_active
+- id: bathroom_knob_brightness_dim
+  alias: Bathroom knob - brightness dim
+  triggers:
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Smart Knob 1 - Bathroom Light
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'',
+      ''single'', ''click''] }}
+
+      '
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'']
+          }}'
+      sequence:
+      - target:
+          entity_id: light.bathroom_light
+        data:
+          brightness_step_pct: '{{ 15 if trigger.payload_json.action == ''rotate_right''
+            else -15 }}'
+        action: light.turn_on
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''single'', ''click'']
+          }}'
+      sequence:
+      - target:
+          entity_id: switch.extractor_fan
+        action: switch.toggle
+  mode: single
+- id: '1787279395723'
+  alias: Fan Intermittent Cycle
+  triggers:
+  - trigger: time_pattern
+    minutes: /5
+  - trigger: state
+    entity_id: input_boolean.fan_intermittent_mode
+    to: 'on'
+  conditions:
+  - condition: state
+    entity_id: input_boolean.fan_intermittent_mode
+    state:
+    - 'off'
+  - condition: light.is_on
+    target:
+      entity_id:
+      - light.living_room_side_lights
+      - light.living_room_fan_light
+    options:
+      behavior: any
+      for: 00:00:00
+  actions:
+  - action: fan.turn_on
+    target:
+      entity_id:
+      - fan.living_room_fan
+    data:
+      percentage: 17
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  - action: fan.turn_off
+    target:
+      entity_id:
+      - fan.living_room_fan
+  mode: single
+- id: '1787304072164'
+  alias: Fan Cycle - Bedroom
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    minutes: /5
+  - trigger: state
+    entity_id: input_boolean.fan_intermittent_mode
+    to: 'on'
+  conditions:
+  - condition: state
+    entity_id: input_boolean.fan_intermittent_mode
+    state:
+    - 'off'
+  actions:
+  - action: fan.turn_on
+    data:
+      percentage: 17
+    target:
+      entity_id: fan.bedroom_fan
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  - action: fan.turn_off
+    target:
+      entity_id:
+      - fan.bedroom_fan
+    data: {}
+  mode: single
+- id: '1787355509748'
+  alias: En Suite Lights Dimmer
+  description: ''
+  triggers:
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Smart Knob 3 - En Suite Lights
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'',
+      ''single'', ''click''] }}
+
+      '
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'']
+          }}'
+      sequence:
+      - target:
+          entity_id: light.en_suite_lights
+        data:
+          brightness_step_pct: '{{ 15 if trigger.payload_json.action == ''rotate_right''
+            else -15 }}'
+        action: light.turn_on
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''single'', ''click'']
+          }}'
+      sequence:
+      - target:
+          entity_id: light.en_suite_lamp
+        action: light.toggle
+  mode: single
+- id: '1787501127960'
+  alias: Diffuser Switch
+  description: ''
+  triggers:
+  - trigger: switch.turned_off
+    target:
+      entity_id: switch.diffuser
+    options:
+      for:
+        hours: 0
+        minutes: 0
+        seconds: 1.5
+  conditions: []
+  actions:
+  - action: switch.toggle
+    metadata: {}
+    target:
+      entity_id: switch.diffuser
+    data: {}
+  mode: single
+- id: adaptive_lighting_master_toggle
+  alias: Adaptive Lighting Master Toggle
+  description: Turn all Adaptive Lighting switches on/off when the master boolean
+    changes
+  triggers:
+  - platform: state
+    entity_id: input_boolean.adaptive_lighting_master
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.adaptive_lighting_master
+        state: 'on'
+      sequence:
+      - service: switch.turn_on
+        target:
+          entity_id:
+          - switch.home_adaptive_lighting_home
+          - switch.bedroom_adaptive_lighting_bedroom
+          - switch.hallway_adaptive_lighting_hallway
+          - switch.kitchen_adaptive_lighting_kitchen
+          - switch.guest_room_adaptive_lighting_guest_room
+          - switch.bathroom_adaptive_lighting_bathroom
+          - switch.en_suite_adaptive_lighting_en_suite
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.adaptive_lighting_master
+        state: 'off'
+      sequence:
+      - service: switch.turn_off
+        target:
+          entity_id:
+          - switch.home_adaptive_lighting_home
+          - switch.bedroom_adaptive_lighting_bedroom
+          - switch.hallway_adaptive_lighting_hallway
+          - switch.kitchen_adaptive_lighting_kitchen
+          - switch.guest_room_adaptive_lighting_guest_room
+          - switch.bathroom_adaptive_lighting_bathroom
+          - switch.en_suite_adaptive_lighting_en_suite
+          - switch.adaptive_lighting_bathroom_adaptive_lighting_sleep_mode_bathroom
+          - switch.adaptive_lighting_bedroom_adaptive_lighting_sleep_mode_bedroom
+          - switch.adaptive_lighting_guest_room_adaptive_lighting_sleep_mode_guest_room
+          - switch.adaptive_lighting_living_room_adaptive_lighting_sleep_mode_living_room
+          - switch.adaptive_lighting_hallway_adaptive_lighting_sleep_mode_hallway
+          - switch.adaptive_lighting_kitchen_adaptive_lighting_sleep_mode_kitchen
+          - switch.adaptive_lighting_en_suite_adaptive_lighting_sleep_mode_en_suite
+  mode: single
+- id: bedroom_al_min_brightness_apply
+  alias: Bedroom Adaptive Lighting - Apply Brightness Override
+  description: Clears manual_control on all Bedroom lights first (so a light that
+    was previously manually adjusted, e.g. neil_light/chloe_light, isn't stuck ignoring
+    Adaptive Lighting - autoreset_control_seconds is 0 so that never clears on its
+    own). When the slider is above 0, pins the Bedroom Adaptive Lighting brightness
+    to that exact value (by setting min_brightness and max_brightness to the same
+    number, collapsing the curve to a flat line) regardless of time of night. When
+    the slider is at 0, restores the switch's normal configured brightness curve.
+  triggers:
+  - platform: state
+    entity_id: input_number.bedroom_al_min_brightness
+  actions:
+  - action: adaptive_lighting.set_manual_control
+    target:
+      entity_id: switch.bedroom_adaptive_lighting_bedroom
+    data:
+      manual_control: false
+  - choose:
+    - conditions:
+      - condition: numeric_state
+        entity_id: input_number.bedroom_al_min_brightness
+        above: 0
+      sequence:
+      - action: adaptive_lighting.change_switch_settings
+        target:
+          entity_id: switch.bedroom_adaptive_lighting_bedroom
+        data:
+          min_brightness: '{{ trigger.to_state.state | int }}'
+          max_brightness: '{{ trigger.to_state.state | int }}'
+    default:
+    - action: adaptive_lighting.change_switch_settings
+      target:
+        entity_id: switch.bedroom_adaptive_lighting_bedroom
+      data:
+        use_defaults: configuration
+  mode: single
+- id: bedroom_al_min_brightness_reset_sunrise
+  alias: Bedroom Adaptive Lighting - Reset Brightness Override at Sunrise
+  description: Turn the override slider back to 0 at sunrise, which lets the apply
+    automation restore Bedroom's normal Adaptive Lighting curve
+  triggers:
+  - platform: sun
+    event: sunrise
+  actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.bedroom_al_min_brightness
+    data:
+      value: 0
+  mode: single
+- id: living_room_knob_fan_toggle_and_speed
+  alias: Living room knob - fan toggle and speed
+  triggers:
+  - topic: zigbee2mqtt/Smart Knob 2
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'',
+      ''single'', ''click''] }} '
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action == ''rotate_right'' }}'
+      sequence:
+      - target:
+          entity_id: fan.living_room_fan
+        action: fan.increase_speed
+        data:
+          percentage_step: 16
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action == ''rotate_left'' }}'
+      sequence:
+      - target:
+          entity_id: fan.living_room_fan
+        action: fan.decrease_speed
+        data:
+          percentage_step: 16
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''single'', ''click'']
+          }}'
+      sequence:
+      - target:
+          entity_id: fan.living_room_fan
+        action: fan.toggle
+  mode: single
+- id: bedroom_knob_fan_toggle_and_speed
+  alias: Bedroom knob - fan toggle and speed
+  triggers:
+  - topic: zigbee2mqtt/Smart Knob 4
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.payload_json.action in [''rotate_right'', ''rotate_left'',
+      ''single'', ''click''] }}
+
+      '
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action == ''rotate_right'' }}'
+      sequence:
+      - target:
+          entity_id: fan.bedroom_fan
+        action: fan.increase_speed
+        data:
+          percentage_step: 16
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action == ''rotate_left'' }}'
+      sequence:
+      - target:
+          entity_id: fan.bedroom_fan
+        action: fan.decrease_speed
+        data:
+          percentage_step: 16
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.payload_json.action in [''single'', ''click'']
+          }}'
+      sequence:
+      - target:
+          entity_id: fan.bedroom_fan
+        action: fan.toggle
+  mode: single

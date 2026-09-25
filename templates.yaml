@@ -1,0 +1,149 @@
+- sensor:
+    # blank spacer for glance/cards
+    - name: "Blank Spacer"
+      unique_id: spacer_glance_1
+      state: ""
+      icon: ""
+
+    # heating boost remaining
+    - name: "Heating Boost Remaining"
+      unique_id: heating_boost_remaining
+      state: "{{ states('input_number.heating_boost_minutes') | int(0) }}"
+      unit_of_measurement: "mins"
+
+    - name: "Dehumidifier Boost Remaining"
+      unique_id: dehumidifier_boost_remaining
+      state: "{{ states('input_number.dehumidifier_boost_minutes') | int(0) }}"
+      unit_of_measurement: "mins"
+
+- light:
+    - name: "Living Room Fan Light"
+      unique_id: living_room_fan_light
+      turn_on:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: living_room_fan
+            command: light_on
+      turn_off:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: living_room_fan
+            command: light_off
+
+    - name: "Bedroom Fan Light"
+      unique_id: bedroom_fan_light
+      turn_on:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: bedroom_fan
+            command: light_on
+      turn_off:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: bedroom_fan
+            command: light_off
+
+- fan:
+    - name: "Living Room Fan"
+      unique_id: living_room_fan
+      percentage: "{{ states('input_number.living_room_fan_speed') | int }}"
+      speed_count: 6
+      turn_on:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: living_room_fan
+            command: fan_1
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.living_room_fan_speed
+          data:
+            value: 16
+      turn_off:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: living_room_fan
+            command: fan_off
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.living_room_fan_speed
+          data:
+            value: 0
+      set_percentage:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: living_room_fan
+            command: >-
+              {% if percentage <= 17 %}fan_1
+              {% elif percentage <= 33 %}fan_2
+              {% elif percentage <= 50 %}fan_3
+              {% elif percentage <= 67 %}fan_4
+              {% elif percentage <= 83 %}fan_5
+              {% else %}fan_6
+              {% endif %}
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.living_room_fan_speed
+          data:
+            value: "{{ percentage }}"
+
+    - name: "Bedroom Fan"
+      unique_id: bedroom_fan
+      percentage: "{{ states('input_number.bedroom_fan_speed') | int }}"
+      speed_count: 6
+      turn_on:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: bedroom_fan
+            command: fan_1
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.bedroom_fan_speed
+          data:
+            value: 16
+      turn_off:
+        - action: remote.send_command
+          target:
+            entity_id: remote.rf_booster
+          data:
+            device: bedroom_fan
+            command: fan_off
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.bedroom_fan_speed
+          data:
+            value: 0
+      set_percentage:
+          - action: remote.send_command
+            target:
+              entity_id: remote.rf_booster
+            data:
+              device: bedroom_fan
+              command: >-
+                {% if percentage <= 17 %}fan_1
+                {% elif percentage <= 33 %}fan_2
+                {% elif percentage <= 50 %}fan_3
+                {% elif percentage <= 67 %}fan_4
+                {% elif percentage <= 83 %}fan_5
+                {% else %}fan_6
+                {% endif %}
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.bedroom_fan_speed
+            data:
+              value: "{{ percentage }}"

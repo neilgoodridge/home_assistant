@@ -1,0 +1,375 @@
+turn_off_all_lights:
+  alias: Turn Off All Lights
+  sequence:
+  - service: homeassistant.turn_off
+    target:
+      entity_id: light.all_lights
+toggle_guest_room_lights:
+  alias: Toggle Guest Room Lights
+  sequence:
+  - service: light.toggle
+    entity_id:
+    - light.guest_room_lamp
+    - light.guest_room_sofa
+toggle_hallway_lights:
+  alias: Toggle Hallway Lights (with transition)
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: light.hallway_lights
+        state: 'on'
+      sequence:
+      - service: light.turn_off
+        target:
+          entity_id: light.hallway_lights
+        data:
+          transition: 1
+    default:
+    - service: light.turn_on
+      target:
+        entity_id: light.hallway_lights
+      data:
+        brightness_pct: 60
+        color_temp_kelvin: 2800
+        transition: 1
+turn_off_bedroom_relax:
+  alias: Turn Off Bedroom Relax
+  sequence:
+  - service: light.turn_off
+    entity_id:
+    - light.bedroom_lamp
+    - light.desk_light
+    - light.chloe_light
+    - light.neil_light
+turn_on_bedroom_relax_scene:
+  alias: Turn On Bedroom Relax Scene
+  sequence:
+  - service: logbook.log
+    data:
+      name: Toggle Scene Script
+      message: Script triggered
+  - service: homeassistant.toggle
+    entity_id: input_boolean.bedroom_relax_scene
+  - service: logbook.log
+    data_template:
+      name: Toggle Scene Script
+      message: "{% if is_state('input_boolean.bedroom_relax_scene', 'on') %}\n  Turning
+        on scene.relax\n{% else %}\n  Turning off bedroom lights\n{% endif %}\n"
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.bedroom_relax_scene
+        state: 'on'
+      sequence:
+      - service: scene.turn_on
+        entity_id: scene.relax
+    default:
+    - service: script.turn_off_bedroom_relax
+toggle_heating_boost:
+  alias: Toggle Heating Boost
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.heating_boost_active
+        state: 'on'
+      sequence:
+      - service: button.press
+        target:
+          entity_id: button.wiser_cancel_all_heating_overrides
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.heating_boost_active
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.heating_boost_minutes
+        data:
+          value: 0
+    default:
+    - service: button.press
+      target:
+        entity_id: button.wiser_boost_all_heating
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.heating_boost_active
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.heating_boost_minutes
+      data:
+        value: 60
+toggle_dehumidifier_boost:
+  alias: Toggle Dehumidifier Boost
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dehumidifier_boost_active
+        state: 'on'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dehumidifier_boost_minutes
+        data:
+          value: 0
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dehumidifier_boost_active
+      - service: humidifier.turn_off
+        target:
+          entity_id: humidifier.dehumidifier
+    default:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dehumidifier_boost_minutes
+      data:
+        value: 60
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.dehumidifier_boost_active
+    - service: humidifier.turn_on
+      target:
+        entity_id: humidifier.dehumidifier
+toggle_extractor_boost:
+  alias: Toggle Extractor Boost
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.extractor_boost_active
+        state: 'on'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.bathroom_extractor_minutes_remaining
+        data:
+          value: 0
+      - service: switch.turn_off
+        target:
+          entity_id: switch.extractor_fan
+    default:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.bathroom_extractor_minutes_remaining
+      data:
+        value: 60
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.extractor_boost_active
+    - service: switch.turn_on
+      target:
+        entity_id: switch.extractor_fan
+unlock_front_door:
+  alias: Unlock Front Door
+  sequence:
+  - service: lock.unlock
+    target:
+      entity_id: lock.door_release
+  mode: single
+flash_lights:
+  alias: Flash lights
+  sequence:
+  - data:
+      topic: zigbee2mqtt/Flash lights/set
+      payload: '{"effect": "okay"}'
+    action: mqtt.publish
+  - condition: time
+    after: 08:00:00
+  mode: single
+doorbell_5_second_debounce:
+  sequence:
+  - target:
+      entity_id: switch.door_bell_relay
+    action: switch.turn_on
+  - delay: '00:00:00.2'
+  - target:
+      entity_id: switch.door_bell_relay
+    action: switch.turn_off
+  - delay: 00:00:05
+  mode: single
+  max_exceeded: silent
+notify_neil:
+  sequence:
+  - action: notify.send_message
+    metadata: {}
+    target:
+      entity_id: notify.neils_iphone_15_pro
+    data: {}
+  alias: Notify Neil
+  description: ''
+living_room_fan_reverse:
+  alias: Living Room Fan Reverse
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: reverse
+bedroom_fan_reverse:
+  alias: Bedroom Fan Reverse
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: bedroom_fan
+      command: reverse
+living_room_fan_light_on:
+  alias: Living Room Fan Light On
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_on
+living_room_fan_light_off:
+  alias: Living Room Fan Light Off
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_off
+living_room_fan_light_up:
+  sequence:
+  - action: script.living_room_fan_light_on
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_warmth
+  - delay:
+      seconds: 1
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_up
+      num_repeats: 20
+      delay_secs: 0.4
+living_room_fan_light_down:
+  sequence:
+  - action: script.living_room_fan_light_on
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_warmth
+  - delay:
+      seconds: 1
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: living_room_fan
+      command: light_down
+      num_repeats: 20
+      delay_secs: 0.4
+bedroom_fan_light_up:
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: bedroom_fan
+      command: light_warmth
+  - delay:
+      seconds: 1
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: bedroom_fan
+      command: light_up
+      num_repeats: 20
+      delay_secs: 0.4
+bedroom_fan_light_down:
+  sequence:
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: bedroom_fan
+      command: light_warmth
+  - delay:
+      seconds: 1
+  - action: remote.send_command
+    target:
+      entity_id: remote.rf_booster
+    data:
+      device: bedroom_fan
+      command: light_down
+      num_repeats: 20
+      delay_secs: 0.4
+toggle_adaptive_lighting_master:
+  alias: Toggle Adaptive Lighting Master
+  sequence:
+  - service: input_boolean.toggle
+    target:
+      entity_id: input_boolean.adaptive_lighting_master
+  mode: single
+en_suite_lamp_conditional_off:
+  alias: En Suite Lamp Conditional Off
+  sequence:
+  - condition: state
+    entity_id: light.en_suite_lamp
+    state: 'on'
+  - condition: state
+    entity_id: light.en_suite_light
+    state: 'off'
+  - action: light.turn_off
+    target:
+      entity_id: light.en_suite_lamp
+  mode: single
+request_tea:
+  alias: Request Tea
+  icon: mdi:tea
+  description: Notify Chloé that a cup of tea is wanted :D
+  sequence:
+  - action: notify.mobile_app_iphone_de_chloe
+    data:
+      title: "\U0001F427 \U0001FAD6\U0001FAD6\U0001FAD6 "
+      message: Nomi would like a tea tea tea
+  mode: single
+toggle_heating_boost_timer:
+  alias: Toggle Heating Boost Timer
+  description: Tapping the Heating Timer icon toggles between off and a default
+    60 minute boost
+  sequence:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.heating_boost_minutes
+    data:
+      value: '{{ 0 if states(''input_number.heating_boost_minutes'') | int(0) > 0
+        else 60 }}'
+  mode: single
+toggle_extractor_boost_timer:
+  alias: Toggle Extractor Boost Timer
+  description: Tapping the Extractor Fan Timer icon toggles between off and a
+    default 10 minute boost
+  sequence:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.bathroom_extractor_minutes_remaining
+    data:
+      value: '{{ 0 if states(''input_number.bathroom_extractor_minutes_remaining'')
+        | int(0) > 0 else 10 }}'
+  mode: single
+toggle_dehumidifier_boost_timer:
+  alias: Toggle Dehumidifier Boost Timer
+  description: Tapping the Dehumidifier Timer icon toggles between off and a
+    default 60 minute boost
+  sequence:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.dehumidifier_boost_minutes
+    data:
+      value: '{{ 0 if states(''input_number.dehumidifier_boost_minutes'') | int(0)
+        > 0 else 60 }}'
+  mode: single
