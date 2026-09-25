@@ -1,0 +1,104 @@
+# migrated groups - see lights.yaml
+# Home Assistant light platform groups (added by user request)
+- platform: group
+  name: Kitchen Lights
+  entities:
+    - light.kitchen_1
+    - light.kitchen_2
+    - light.kitchen_3
+    - light.kitchen_4
+    - light.kitchen_5
+    - light.kitchen_6
+
+- platform: group
+  name: Hallway Lights
+  entities:
+    - light.hall_1
+    - light.hall_2
+    - light.hall_3
+    - light.hall_4
+    - light.hall_5
+    - light.hall_6
+    - light.hall_7
+    - light.hall_8
+
+- platform: group
+  name: Living Room Main Lights
+  entities:
+    - light.living_room_fan_light
+
+- platform: group
+  name: Living Room Side Lights
+  entities:
+    - light.living_room_lamp
+    - light.living_room_corner_lamp
+    - light.living_room_bookcase
+    - light.balcony
+    - light.balcony_string_lights
+    - light.living_room_jaipur_lamp
+    - light.tv_light
+    - light.christmas_lights
+
+- platform: group
+  name: Bedroom Side Lights
+  entities:
+    - light.bedroom_lamp
+    - light.chloe_light
+    - light.neil_light
+    - light.desk_light
+
+- platform: group
+  name: Guest Room Side Lights
+  entities:
+    - light.guest_room_lamp
+    - light.guest_room_sofa
+
+- platform: group
+  name: En Suite Lights
+  entities:
+    - light.en_suite_light
+    - light.en_suite_lamp
+
+- platform: group
+  name: Balcony Lights
+  entities:
+    - light.balcony
+    - light.balcony_string_lights
+
+- platform: group
+  name: Bathroom Lights
+  entities:
+    - light.bathroom_light
+    - light.bathroom_mirror_light
+
+# all lights in the house (was group.all_lights in groups.yaml; moved here
+# since it's purely light entities — this file now covers every light group)
+- platform: group
+  name: All Lights
+  entities:
+    # living room lights
+    - light.living_room_main_lights
+    - light.living_room_bookcase
+    - light.living_room_corner_lamp
+    - light.living_room_lamp
+    - light.living_room_jaipur_lamp
+    - light.tv_light
+    - light.balcony
+    - light.balcony_string_lights
+    - light.christmas_lights
+    # bedroom lights
+    - light.bedroom_fan_light
+    - light.chloe_light
+    - light.desk_light
+    - light.bedroom_lamp
+    - light.neil_light
+    # guest room lights
+    - light.guest_room_main_light
+    - light.guest_room_lamp
+    - light.guest_room_sofa
+    # other rooms (composed groups defined above in this same file)
+    - light.hallway_lights
+    - light.kitchen_lights
+    - light.bathroom_lights
+    - light.en_suite_lights
+

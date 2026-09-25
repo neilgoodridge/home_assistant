@@ -1,0 +1,147 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+group: !include groups.yaml
+light: !include light_groups.yaml
+template: !include templates.yaml
+
+lovelace:
+  resource_mode: yaml
+  # resources:
+  # - url: /hacsfiles/button-card/button-card.js
+  #   type: module
+  dashboards:
+    lovelace:
+      mode: yaml
+      filename: ui-lovelace.yaml
+      title: Overview
+      icon: mdi:view-dashboard
+      show_in_sidebar: true
+
+python_script:
+
+input_boolean:
+  bedroom_relax_scene:
+    name: Bedroom Relax Scene
+    initial: off
+  test_toggle:
+    name: Test Toggle
+    initial: off
+  film_mode_active:
+    name: Film Mode Active
+    initial: off
+  simulate_bedroom_fault:
+    name: Simulate Bedroom Switch Fault
+  heating_boost_active:
+    name: Heating Boost Active
+    initial: off
+  dehumidifier_boost_active:
+    name: Dehumidifier Boost Active
+    initial: off
+  front_door_pulse:
+    name: Front Door Pulse
+    initial: off
+  bathroom_light_sync_guard:
+    name: Bathroom Light Sync Guard
+    initial: off
+  ensuite_toggle:
+    name: En Suite Door Toggle
+    initial: false
+  extractor_boost_active:
+    name: Extractor Boost Active
+    initial: off
+  fridge_door_alert_sent:
+    name: Fridge Door Alert Sent
+  adaptive_lighting_master:
+    name: Adaptive Lighting
+  fan_intermittent_mode:
+    name: Fan Intermittent Mode
+    icon: mdi:fan-clock
+  living_room_fan_light_popup:
+    name: Living Room Fan Light Popup
+    icon: mdi:ceiling-light
+  bedroom_fan_light_popup:
+    name: Bedroom Fan Light Popup
+    icon: mdi:ceiling-light
+    initial: off
+  heating_popup:
+    name: Heating Popup
+    icon: mdi:radiator
+    initial: off
+  en_suite_popup:
+    name: En Suite Popup
+    icon: mdi:shower-head
+    initial: off
+
+input_number:
+  heating_boost_minutes:
+    name: Heating Boost Minutes
+    unit_of_measurement: minutes
+    min: 0
+    max: 120
+    step: 1
+    initial: 0
+  dehumidifier_boost_minutes:
+    name: Dehumidifier Boost Minutes
+    unit_of_measurement: minutes
+    min: 0
+    max: 360
+    step: 5
+    initial: 0
+  bathroom_extractor_minutes_remaining:
+    name: Extractor Boost Minutes
+    unit_of_measurement: minutes
+    min: 0
+    max: 120
+    step: 1
+    initial: 0
+  bedroom_al_min_brightness:
+    name: Bedroom Brightness Override
+    icon: mdi:brightness-6
+    unit_of_measurement: "%"
+    min: 0
+    max: 100
+    step: 1
+    initial: 0
+    mode: slider
+
+logger:
+  default: info
+  logs:
+    homeassistant.components.climate: debug
+
+notify:
+  - platform: group
+    name: family
+    services:
+      - service: mobile_app_neils_iphone
+      - service: mobile_app_iphone_de_chloe
+  - platform: group
+    name: neil_only
+    services:
+      - service: mobile_app_neils_iphone
+
+# Input select for heating based on alarm
+input_select:
+  tomorrow_mode:
+    name: Tomorrow Mode
+    options:
+      - Home
+      - Office
+      - Unknown
+    initial: Unknown
+  dehumidifier_countdown:
+    name: Dehumidifier Countdown
+    options:
+      - cancel
+      - 1h
+      - 2h
+      - 3h
+    initial: cancel
